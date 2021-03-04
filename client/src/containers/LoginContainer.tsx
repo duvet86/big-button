@@ -10,11 +10,7 @@ export default function LoginContainer() {
     setLoginName(event.currentTarget.value);
   }
 
-  function submit(
-    event:
-      | React.MouseEvent<HTMLButtonElement>
-      | React.ChangeEvent<HTMLInputElement>
-  ) {
+  function submit(event: React.FormEvent<HTMLFormElement>) {
     // submit ws request
     event.preventDefault();
 
@@ -22,6 +18,12 @@ export default function LoginContainer() {
       method: "POST",
       mode: "cors",
       credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        username: loginName,
+      }),
     })
       .then(handleResponse)
       //   .then(setMessage)
@@ -31,15 +33,10 @@ export default function LoginContainer() {
   }
 
   return (
-    <article>
-      <input
-        type="text"
-        value={loginName}
-        onInput={handleNameInput}
-        onChange={submit}
-      />
+    <form onSubmit={submit}>
+      <input type="text" value={loginName} onInput={handleNameInput} />
 
-      <button onClick={submit}>Submit</button>
-    </article>
+      <button type="submit">Submit</button>
+    </form>
   );
 }

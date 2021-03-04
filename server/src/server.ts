@@ -9,6 +9,7 @@ import WebSocket from "ws";
 declare module "express-session" {
   interface SessionData {
     userId?: string;
+    username?: string;
   }
 }
 
@@ -18,6 +19,9 @@ interface IncomingMessage extends http.IncomingMessage {
 
 const app = express();
 const map = new Map();
+
+// json parser
+app.use(express.json());
 
 //
 // We need the same instance of the session parser in express and
@@ -48,8 +52,19 @@ app.post("/login", (req, res) => {
 
   console.log(`Session Id: ${req.session.id}`);
   console.log(`Updating session for user ${id}`);
+  const username = req.body.username;
+  console.log({ username });
+
   req.session.userId = id;
-  res.send({ result: "OK", message: `Session for user: ${id}` });
+  req.session.username = username;
+  res.json({
+    result: "OK",
+    data: {
+      username: username,
+      session_id: id,
+    },
+  });
+  // res.send({ result: "OK", message: `Session for user: ${id}` });
 });
 
 app.get("/test", (req, res) => {
