@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import LoginContainer from "./containers/LoginContainer";
 
 import { handleResponse } from "./utils/http";
 
@@ -115,6 +116,9 @@ export default function App() {
       <pre id="messages" style={{ height: 400, overflow: "scroll" }}>
         {message}
       </pre>
+
+
+      <LoginContainer/>
     </div>
   );
 }
