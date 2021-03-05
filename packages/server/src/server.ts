@@ -5,11 +5,19 @@ import http from "http";
 import { v4 as uuidv4 } from "uuid";
 import WebSocket from "ws";
 
+interface Player {
+  id: string;
+  username: string;
+  isReady: boolean;
+}
+
 // Declaration merging.
 declare module "express-session" {
   // eslint-disable-next-line no-unused-vars
   interface SessionData {
     userId?: string;
+    username?: string;
+    players?: Record<string, Player>;
   }
 }
 
@@ -17,6 +25,7 @@ interface IncomingMessage extends http.IncomingMessage {
   session: session.SessionData;
 }
 
+const PORT = process.env.PORT || "8080";
 const app = express();
 const map = new Map();
 
@@ -40,17 +49,30 @@ app.use(
   })
 );
 app.use(sessionParser);
+app.use(express.json()); // for parsing application/json
+app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 
 app.post("/login", (req, res) => {
+  if (req.session.players == null) {
+    req.session.players = {};
+  }
+
   //
   // "Log in" user and set userId to session.
   //
   const id = uuidv4();
 
-  console.log(`Session Id: ${req.session.id}`);
-  console.log(`Updating session for user ${id}`);
+  // console.log(`Session Id: ${req.session.id}`);
+  // console.log(`Updating session for user ${id}`);
+
   req.session.userId = id;
-  res.send({ result: "OK", message: `Session for user: ${id}` });
+  req.session.players[id] = {
+    id,
+    username: req.body.username,
+    isReady: false,
+  };
+
+  res.send({ result: "OK", username: req.body.username, userId: id });
 });
 
 app.get("/test", (req, res) => {
@@ -104,11 +126,28 @@ wss.on("connection", (ws, request: IncomingMessage) => {
 
   map.set(userId, ws);
 
-  ws.on("message", (message) => {
-    //
-    // Here we can now use session parameters.
-    //
-    console.log(`Received message ${message} from user ${userId}`);
+  ws.on("message", (id: string) => {
+    if (request.session.players == null) {
+      throw new Error();
+    }
+
+    const player = request.session.players[id];
+    if (player == null) {
+      throw new Error();
+    }
+    if (!player.isReady) {
+      player.isReady = true;
+      request.session.players[id] = player;
+      ws.send(
+        `User ${player.username} is ready. Total players: ${
+          Object.keys(request.session.players).length
+        }`
+      );
+    } else {
+      ws.send({
+        clickedAt: Date.now(),
+      });
+    }
   });
 
   ws.on("close", () => {
@@ -119,6 +158,6 @@ wss.on("connection", (ws, request: IncomingMessage) => {
 //
 // Start the server.
 //
-server.listen(8080, () => {
-  console.log("Listening on http://localhost:8080");
+server.listen(PORT, () => {
+  console.log(`Listening on http://localhost:${PORT}`);
 });
