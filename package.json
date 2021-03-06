@@ -7,7 +7,8 @@
   "scripts": {
     "client": "yarn workspace client start",
     "server": "yarn workspace server start",
-    "start": "concurrently --kill-others-on-fail \"yarn server\"  \"yarn client\"",
+    "start:dev": "concurrently --kill-others-on-fail \"yarn server\"  \"yarn client\"",
+    "start": "node packages/server/dist/server.js",
     "build": "concurrently --kill-others-on-fail \"yarn workspace client build\"  \"yarn workspace server build\""
   },
   "workspaces": [
