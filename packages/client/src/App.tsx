@@ -2,6 +2,9 @@ import { useState, useRef, useCallback, useEffect } from "react";
 
 import { handleResponse } from "./utils/http";
 
+const HOST =
+  process.env.NODE_ENV !== "production" ? "http://localhost:8080" : "";
+
 export default function App() {
   const wsRef = useRef<WebSocket | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -19,7 +22,7 @@ export default function App() {
 
   useEffect(() => {
     return () => {
-      fetch("http://localhost:8080/logout", {
+      fetch(`${HOST}/logout`, {
         method: "DELETE",
         mode: "cors",
         credentials: "include",
@@ -33,7 +36,7 @@ export default function App() {
       return;
     }
 
-    fetch("http://localhost:8080/login", {
+    fetch(`${HOST}/login`, {
       method: "POST",
       mode: "cors",
       credentials: "include",
@@ -51,7 +54,7 @@ export default function App() {
           wsRef.current.close();
         }
 
-        wsRef.current = new WebSocket("ws://localhost:8080");
+        wsRef.current = new WebSocket(`ws://${window.location.hostname}`);
         wsRef.current.onerror = function () {
           setMessage("WebSocket error");
         };

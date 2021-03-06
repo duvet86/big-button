@@ -45,13 +45,17 @@ const sessionParser = session({
 //
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin:
+      process.env.NODE_ENV === "production"
+        ? `http://localhost:${PORT}`
+        : "http://localhost:3000",
     credentials: true,
   })
 );
 app.use(sessionParser);
 app.use(express.json()); // for parsing application/json
 app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
+app.use(express.static("../client/build"));
 
 app.post("/login", (req, res) => {
   //
