@@ -5,6 +5,8 @@ import { handleResponse } from "./utils/http";
 const HOST =
   process.env.NODE_ENV !== "production" ? "http://localhost:8080" : "";
 
+const PROTOCOL = process.env.NODE_ENV !== "production" ? "ws" : "wss";
+
 export default function App() {
   const wsRef = useRef<WebSocket | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -54,7 +56,9 @@ export default function App() {
           wsRef.current.close();
         }
 
-        wsRef.current = new WebSocket(`ws://${window.location.hostname}`);
+        wsRef.current = new WebSocket(
+          `${PROTOCOL}://${window.location.hostname}`
+        );
         wsRef.current.onerror = function () {
           setMessage("WebSocket error");
         };
