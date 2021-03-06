@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 import { handleResponse } from "./utils/http";
 
@@ -15,6 +15,16 @@ export default function App() {
     }
 
     inputRef.current = inputEl;
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      fetch("http://localhost:8080/logout", {
+        method: "DELETE",
+        mode: "cors",
+        credentials: "include",
+      });
+    };
   }, []);
 
   const onLoginClick = () => {
@@ -35,8 +45,8 @@ export default function App() {
       }),
     })
       .then(handleResponse)
-      .then((resp: { username: string; userId: string }) => {
-        if (wsRef.current) {
+      .then((resp: { userId: string }) => {
+        if (wsRef.current != null) {
           wsRef.current.onerror = wsRef.current.onopen = wsRef.current.onclose = null;
           wsRef.current.close();
         }
@@ -46,14 +56,18 @@ export default function App() {
           setMessage("WebSocket error");
         };
         wsRef.current.onopen = function () {
-          setMessage(`Welcome ${resp.username}.`);
+          wsRef.current?.send(resp.userId);
         };
         wsRef.current.onclose = function () {
           setMessage("WebSocket connection closed");
           wsRef.current = null;
         };
         wsRef.current.onmessage = function (message) {
-          setMessage(JSON.stringify(message.data));
+          if (message.data === "0") {
+            setMessage("GO");
+          } else {
+            setMessage(message.data);
+          }
         };
 
         setUserId(resp.userId);
@@ -62,32 +76,6 @@ export default function App() {
         setMessage(err.message);
       });
   };
-
-  // const onLogoutClick = () => {
-  //   fetch("http://localhost:8080/logout", {
-  //     method: "DELETE",
-  //     mode: "cors",
-  //     credentials: "include",
-  //   })
-  //     .then(handleResponse)
-  //     .then(setMessage)
-  //     .catch(function (err) {
-  //       setMessage(err.message);
-  //     });
-  // };
-
-  // const onTestClick = () => {
-  //   fetch("http://localhost:8080/test", {
-  //     method: "GET",
-  //     mode: "cors",
-  //     credentials: "include",
-  //   })
-  //     .then(handleResponse)
-  //     .then(setMessage)
-  //     .catch(function (err) {
-  //       setMessage(err.message);
-  //     });
-  // };
 
   const sendWsMessage = () => {
     if (userId == null) {
@@ -99,7 +87,6 @@ export default function App() {
     }
 
     wsRef.current.send(userId);
-    setMessage('Sent "Hello World!"');
   };
 
   return (
@@ -120,35 +107,18 @@ export default function App() {
       ) : (
         <div>
           <div>{message}</div>
-          <button
-            id="wsSendButton"
-            type="button"
-            title="Send WebSocket message"
-            onClick={sendWsMessage}
-          >
-            Are you ready to play?
-          </button>
+          {(message === "GO" || message === "YOU WIN!") && (
+            <button
+              id="wsSendButton"
+              type="button"
+              title="Send WebSocket message"
+              onClick={sendWsMessage}
+            >
+              Click Me
+            </button>
+          )}
         </div>
       )}
-      {/* <button
-        id="logout"
-        type="button"
-        title="Simulate logout"
-        onClick={onLogoutClick}
-      >
-        Simulate logout
-      </button>
-      <button id="test" type="button" title="Test" onClick={onTestClick}>
-        Test
-      </button>
-      <button
-        id="wsSendButton"
-        type="button"
-        title="Send WebSocket message"
-        onClick={sendWsMessage}
-      >
-        Send WebSocket message
-      </button> */}
     </div>
   );
 }

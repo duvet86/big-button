@@ -8,7 +8,6 @@ import WebSocket from "ws";
 interface Player {
   id: string;
   username: string;
-  isReady: boolean;
 }
 
 // Declaration merging.
@@ -16,8 +15,6 @@ declare module "express-session" {
   // eslint-disable-next-line no-unused-vars
   interface SessionData {
     userId?: string;
-    username?: string;
-    players?: Record<string, Player>;
   }
 }
 
@@ -27,7 +24,11 @@ interface IncomingMessage extends http.IncomingMessage {
 
 const PORT = process.env.PORT || "8080";
 const app = express();
-const map = new Map();
+const map = new Map<string, WebSocket>();
+const players = new Map<string, Player>();
+
+let interval: NodeJS.Timeout;
+let timer = 4;
 
 //
 // We need the same instance of the session parser in express and
@@ -53,26 +54,22 @@ app.use(express.json()); // for parsing application/json
 app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 
 app.post("/login", (req, res) => {
-  if (req.session.players == null) {
-    req.session.players = {};
-  }
-
   //
   // "Log in" user and set userId to session.
   //
   const id = uuidv4();
 
-  // console.log(`Session Id: ${req.session.id}`);
-  // console.log(`Updating session for user ${id}`);
+  console.log(`Session Id: ${req.session.id}`);
+  console.log(`Updating session for user ${id}`);
 
   req.session.userId = id;
-  req.session.players[id] = {
+
+  players.set(id, {
     id,
     username: req.body.username,
-    isReady: false,
-  };
+  });
 
-  res.send({ result: "OK", username: req.body.username, userId: id });
+  res.send({ result: "OK", userId: id });
 });
 
 app.get("/test", (req, res) => {
@@ -83,6 +80,10 @@ app.get("/test", (req, res) => {
 });
 
 app.delete("/logout", (request, response) => {
+  if (request.session.userId == null) {
+    throw new Error();
+  }
+
   const ws = map.get(request.session.userId);
 
   console.log("Destroying session");
@@ -106,7 +107,7 @@ const wss = new WebSocket.Server({ clientTracking: false, noServer: true });
 server.on("upgrade", (request, socket, head) => {
   console.log("Parsing session from request...");
 
-  sessionParser(request, <any>{}, () => {
+  sessionParser(request, <never>{}, () => {
     if (!request.session.userId) {
       socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
       socket.destroy();
@@ -123,30 +124,39 @@ server.on("upgrade", (request, socket, head) => {
 
 wss.on("connection", (ws, request: IncomingMessage) => {
   const userId = request.session.userId;
+  if (userId == null) {
+    throw new Error();
+  }
 
   map.set(userId, ws);
 
-  ws.on("message", (id: string) => {
-    if (request.session.players == null) {
-      throw new Error();
-    }
+  ws.send("Ready to play?");
 
-    const player = request.session.players[id];
+  ws.on("message", (message: string) => {
+    const player = players.get(message);
     if (player == null) {
       throw new Error();
     }
-    if (!player.isReady) {
-      player.isReady = true;
-      request.session.players[id] = player;
-      ws.send(
-        `User ${player.username} is ready. Total players: ${
-          Object.keys(request.session.players).length
-        }`
-      );
-    } else {
-      ws.send({
-        clickedAt: Date.now(),
-      });
+
+    if (timer === 0) {
+      ws.send("YOU WIN!");
+      timer = 4;
+      clearInterval(interval);
+      return;
+    }
+
+    if (players.size > 1) {
+      interval = setInterval(() => {
+        timer--;
+
+        map.forEach((userWs) => {
+          userWs.send(timer);
+        });
+
+        if (timer === 0) {
+          clearInterval(interval);
+        }
+      }, 1000);
     }
   });
 
