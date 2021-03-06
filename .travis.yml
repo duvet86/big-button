@@ -5,6 +5,6 @@ env:
   - NODE_ENV=production
 cache: yarn
 install:
-  - yarn install
+  - yarn install --production=false
 script:
   - yarn build
