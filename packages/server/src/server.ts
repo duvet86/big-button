@@ -1,7 +1,8 @@
+import path from "path";
+import http from "http";
 import session from "express-session";
 import cors from "cors";
 import express from "express";
-import http from "http";
 import { v4 as uuidv4 } from "uuid";
 import WebSocket from "ws";
 
@@ -55,7 +56,7 @@ app.use(
 app.use(sessionParser);
 app.use(express.json()); // for parsing application/json
 app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
-app.use(express.static("../client/build"));
+app.use(express.static(path.join(__dirname, "../../client/build")));
 
 app.post("/login", (req, res) => {
   //
