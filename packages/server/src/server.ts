@@ -135,7 +135,13 @@ wss.on("connection", (ws, request: IncomingMessage) => {
 
   map.set(userId, ws);
 
-  ws.send("Ready to play?");
+  if (players.size < 2) {
+    ws.send("Waiting for players...");
+  } else {
+    map.forEach((userWs) => {
+      userWs.send("GET READY!");
+    });
+  }
 
   ws.on("message", (message: string) => {
     const player = players.get(message);
@@ -144,7 +150,13 @@ wss.on("connection", (ws, request: IncomingMessage) => {
     }
 
     if (timer === 0) {
-      ws.send("YOU WIN!");
+      map.forEach((userWs, id) => {
+        if (userId === id) {
+          userWs.send("YOU WIN!");
+        } else {
+          userWs.send("YOU LOSE!");
+        }
+      });
       timer = 4;
       clearInterval(interval);
       return;

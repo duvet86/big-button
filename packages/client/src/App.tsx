@@ -2,17 +2,21 @@ import { useState, useRef, useCallback, useEffect } from "react";
 
 import { handleResponse } from "./utils/http";
 
-const HOST =
-  process.env.NODE_ENV !== "production" ? "http://localhost:8080" : "";
+const HOST_HTTP =
+  process.env.NODE_ENV === "production" ? "" : "http://localhost:8080";
 
-const PROTOCOL = process.env.NODE_ENV !== "production" ? "ws" : "wss";
+const HOST_WS =
+  process.env.NODE_ENV === "production"
+    ? `wss://${window.location.hostname}`
+    : "ws://localhost:8080";
 
 export default function App() {
   const wsRef = useRef<WebSocket | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const [userId, setUserId] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [hasConnected, setHasConnected] = useState(false);
+  const [message, setMessage] = useState<string>("");
 
   const ref = useCallback((inputEl: HTMLInputElement) => {
     if (inputEl == null) {
@@ -24,7 +28,7 @@ export default function App() {
 
   useEffect(() => {
     return () => {
-      fetch(`${HOST}/logout`, {
+      fetch(`${HOST_HTTP}/logout`, {
         method: "DELETE",
         mode: "cors",
         credentials: "include",
@@ -38,7 +42,7 @@ export default function App() {
       return;
     }
 
-    fetch(`${HOST}/login`, {
+    fetch(`${HOST_HTTP}/login`, {
       method: "POST",
       mode: "cors",
       credentials: "include",
@@ -56,14 +60,13 @@ export default function App() {
           wsRef.current.close();
         }
 
-        wsRef.current = new WebSocket(
-          `${PROTOCOL}://${window.location.hostname}`
-        );
+        wsRef.current = new WebSocket(HOST_WS);
         wsRef.current.onerror = function () {
           setMessage("WebSocket error");
         };
         wsRef.current.onopen = function () {
           wsRef.current?.send(resp.userId);
+          setHasConnected(true);
         };
         wsRef.current.onclose = function () {
           setMessage("WebSocket connection closed");
@@ -98,7 +101,7 @@ export default function App() {
 
   return (
     <div>
-      {message == null ? (
+      {!hasConnected ? (
         <div>
           <label htmlFor="username">Username</label>
           <input type="text" id="username" ref={ref}></input>
@@ -114,7 +117,7 @@ export default function App() {
       ) : (
         <div>
           <div>{message}</div>
-          {(message === "GO" || message === "YOU WIN!") && (
+          {!["3", "2", "1"].includes(message) && (
             <button
               id="wsSendButton"
               type="button"
